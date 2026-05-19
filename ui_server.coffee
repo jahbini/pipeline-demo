@@ -647,6 +647,21 @@ collectDiaryFiles = (run) ->
   rows.sort (a, b) -> String(a.path).localeCompare String(b.path)
   rows
 
+# Ported from writeStory main: lists files under `logs/`, marking
+# any updated since the current run started as "fresh". The frontend
+# uses this to render the "logs" panel.
+collectLogFiles = (run) ->
+  logDir = path.join(CWD, 'logs')
+  runStart = run?.started_at ? null
+  rows = []
+  return rows unless fs.existsSync(logDir)
+
+  for entry in listFiles(logDir) when entry? and entry.is_dir isnt true
+    rows.push describeOutputFile "logs/#{entry.name}", runStart
+
+  rows.sort (a, b) -> String(b.path).localeCompare String(a.path)
+  rows
+
 buildStatus = ->
   run = normalizeUiRun readJson path.join(CWD, 'state', 'ui-run.json'), {}
   mergeRun = readMergeRun()
@@ -678,6 +693,7 @@ buildStatus = ->
     latest_err: latestErr
     out_files: expectedOutputs.out_files
     diary_files: expectedOutputs.diary_files
+    log_files: collectLogFiles(run)
   }
 
 isAllowedFilePath = (relativePath) ->
