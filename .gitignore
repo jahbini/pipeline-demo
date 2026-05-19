@@ -4,6 +4,7 @@ state/
 params/
 override/
 override.yaml
+override.yaml.*.bak
 control_override.yaml
 experiment.yaml
 runtime.sqlite

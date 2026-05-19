@@ -27,20 +27,27 @@ A `package.json` with three things in it:
 - **macOS with Apple Silicon** — MLX is Apple-Silicon-only. The
   rest of the runner is platform-agnostic.
 
-## First run, in four commands
+## First run, in two commands
 
 ```sh
 git clone https://github.com/jahbini/pipeline-demo my-project
 cd my-project
+./run-first.sh
+```
+
+`run-first.sh` does the three things below for you. The whole thing
+takes well under a minute on a fresh clone; the slow part is the
+one-time MLX pip install. The very last thing you see will be the
+`step9_handoff` welcome message — "now it's your opportunity" —
+with concrete suggestions for what to edit next.
+
+If you'd rather see each step, the script is just three lines:
+
+```sh
 npm install       # pulls @jahbini/pipeline from GitHub
 npm run setup     # drops override.yaml, creates .venv with MLX
 npm run demo      # runs the 9-step test pipeline
 ```
-
-The last step should finish in well under a minute. The very last
-thing you see will be the `step9_handoff` welcome message —
-"now it's your opportunity" — with concrete suggestions for what
-to edit next.
 
 ## What each script does
 
@@ -51,22 +58,38 @@ to edit next.
 | `npm run setup:py`  | Creates `.venv/` and installs MLX (mlx, mlx-lm, mlx-metal at pinned versions)      |
 | `npm run demo`      | Runs the pipeline named in `override.yaml` (defaults to `test`)                    |
 | `npm run pipeline`  | Same as `demo` — both invoke the runner. Use whichever name feels right.           |
-| `npm run ui:init`   | Copies the runner's `ui/index.html` into the project so you can customize it       |
-| `npm run ui`        | Starts the UI HTTP server on `http://127.0.0.1:4311` (override via `UI_PORT`)       |
+| `npm run ui`        | Starts the local UI HTTP server on `http://127.0.0.1:4311` (override via `UI_PORT`) |
+| `npm run ui:reset`  | Restores `ui/` and `ui_server.coffee` from the installed package's defaults         |
 | `npm run clean`     | Wipes every runtime artifact — back to a fresh clone state                         |
 
-## Optional: the UI
+## The UI is yours to hack
 
-After the demo runs you can launch the UI to watch future runs
-visually and inspect artifacts:
+The starter ships with the **entire UI stack** at the project root,
+not buried in `node_modules/`:
 
-```sh
-npm run ui:init    # one-time, copies ui/ to the project root
-npm run ui         # then open http://127.0.0.1:4311
+```
+your-project/
+  ui/index.html        ← static frontend (HTML, CSS, JS) — edit freely
+  ui_server.coffee     ← HTTP server (recipe dropdown, state polling,
+                         spawn runner) — edit freely too
 ```
 
-Once `ui/` lives in your project root, you can edit `ui/index.html`
-freely — updates to the runner package won't overwrite your edits.
+Both are first-class project files. Modify them however you want —
+add panels, change the protocol, swap the layout, rip out features.
+Updates to `@jahbini/pipeline` in `node_modules/` don't touch these
+files. If you ever want to start over from the package's current
+defaults, `npm run ui:reset` overwrites them.
+
+To launch:
+
+```sh
+npm run ui     # then open http://127.0.0.1:4311
+```
+
+The script sets `EXEC` to `./node_modules/@jahbini/pipeline` so the
+server still finds the shipped recipes, meta devices, and runner.
+Your `ui_server.coffee` is in charge of the user experience; the
+installed package is in charge of the engine.
 
 ## Making it yours
 

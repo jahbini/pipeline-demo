@@ -4,13 +4,13 @@
   "private": true,
   "description": "Starter project for @jahbini/pipeline-runner. Clone, install, run — see the test pipeline end-to-end including the welcoming hand-off.",
   "scripts": {
-    "setup:override": "cp ./node_modules/@jahbini/pipeline/override.test.yaml ./override.yaml",
+    "setup:override": "if [ -f override.yaml ]; then mv override.yaml \"override.yaml.$(date +%Y-%m-%d_%H-%M-%S).bak\"; fi && cp ./node_modules/@jahbini/pipeline/override.test.yaml ./override.yaml",
     "setup:py": "python3 -m venv .venv && .venv/bin/pip install --upgrade pip setuptools wheel && .venv/bin/pip install -r ./node_modules/@jahbini/pipeline/requirements.txt",
     "setup": "npm run setup:override && npm run setup:py",
     "demo": "pipeline",
     "pipeline": "pipeline",
-    "ui:init": "cp -r ./node_modules/@jahbini/pipeline/ui ./ui",
-    "ui": "pipeline-ui",
+    "ui": "EXEC=$PWD/node_modules/@jahbini/pipeline coffee ui_server.coffee",
+    "ui:reset": "cp -r ./node_modules/@jahbini/pipeline/ui ./ui && cp ./node_modules/@jahbini/pipeline/ui_server.coffee ./ui_server.coffee && chmod +x ./ui_server.coffee",
     "clean": "rm -rf .venv override override.yaml control_override.yaml state params experiment.yaml runtime.sqlite tested env out data pipeline.json"
   },
   "dependencies": {
