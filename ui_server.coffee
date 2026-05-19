@@ -61,6 +61,24 @@ resolveExecRoot = ->
     candidates.push absolute
 
   pushCandidate process.env.EXEC if process.env.EXEC?
+
+  # **Read env/EXEC stamped by the runner.**
+  # On every run, pipeline_runner.coffee saves `env/EXEC` (and
+  # `env/CWD`, `env/PYTHON`, …) into the project via the slash
+  # meta device. That's the authoritative project record of where
+  # the runner code lives, so we honor it before any heuristic
+  # guess. The file is JSON-encoded (the slash meta does
+  # JSON.stringify on string values), hence the parse.
+  try
+    envExecPath = path.join(CWD, 'env', 'EXEC')
+    if fs.existsSync(envExecPath)
+      raw = fs.readFileSync(envExecPath, 'utf8').trim()
+      parsed = null
+      try parsed = JSON.parse(raw) catch then parsed = raw
+      pushCandidate parsed if typeof parsed is 'string'
+  catch
+    null
+
   pushCandidate path.dirname(__filename)
   pushCandidate process.cwd()
   pushCandidate CWD
@@ -545,15 +563,15 @@ buildControls = ->
     realization: pending.realization ? controlStoryStep.realization ? recipeStoryStep.realization ? ''
     continuous: uiControl.continuous is true
     continuous_delay_seconds: normalizeCooldownSeconds(uiControl.continuous_delay_seconds, 60)
+    # **Demo-only dropdown.** This is the *project-owned* ui_server,
+    # so we list only what works out-of-the-box from the package: the
+    # `test` pipeline. To enable more, add their names here AND make
+    # sure the steps they reference have actual scripts available
+    # (either supplied by the project or copied from upstream
+    # writeStory). The `_ite` recipes in the package ship as
+    # templates — see the runner's README for what each needs.
     pipelines: [
-      'base_ite'
-      'oracle_ite'
-      'lora_ite'
-      'diary_ite'
-      'diary_translate_ite'
-      'prompt_ite'
-      'story_scan'
-      'lora_scan'
+      'test'
     ]
     scene_options: makeOptions 'scenes'
     arrival_options: makeOptions 'characters'
