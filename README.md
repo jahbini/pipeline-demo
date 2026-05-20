@@ -1,6 +1,12 @@
 # pipeline-demo
 
-The starter project for [`@jahbini/pipeline`](https://github.com/jahbini/pipeline).
+I wrote weird fiction set in Portland, Oregon. I wanted a local AI model that could write in my voice. I started with a Python notebook, and by the time I was done I'd accidentally built a general-purpose AI experiment runner.
+Here's a paragraph it generated:
+
+>> Right now, the sun is hanging low, and the treetops are weeping golden liquid into the crows' nests...
+
+That's not cherry-picked. The voice holds because of how retrieval works — keywords instead of embeddings...
+
 Clone, install, run — and in under a minute you'll see the shipped
 test pipeline execute end-to-end and print a friendly hand-off
 message telling you where to go next.
