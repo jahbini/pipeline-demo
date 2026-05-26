@@ -563,15 +563,15 @@ buildControls = ->
     realization: pending.realization ? controlStoryStep.realization ? recipeStoryStep.realization ? ''
     continuous: uiControl.continuous is true
     continuous_delay_seconds: normalizeCooldownSeconds(uiControl.continuous_delay_seconds, 60)
-    # **Demo-only dropdown.** This is the *project-owned* ui_server,
-    # so we list only what works out-of-the-box from the package: the
-    # `test` pipeline. To enable more, add their names here AND make
-    # sure the steps they reference have actual scripts available
-    # (either supplied by the project or copied from upstream
-    # writeStory). The `_ite` recipes in the package ship as
-    # templates — see the runner's README for what each needs.
     pipelines: [
-      'test'
+      'base_ite'
+      'oracle_ite'
+      'lora_ite'
+      'diary_ite'
+      'diary_translate_ite'
+      'prompt_ite'
+      'story_scan'
+      'lora_scan'
     ]
     scene_options: makeOptions 'scenes'
     arrival_options: makeOptions 'characters'
@@ -1170,6 +1170,17 @@ handleKill = (req, res) ->
     pid: pid
     target_kind: targetKind
 
+# Stop the UI server process itself. A relaunched (Switch Pipe) server is
+# detached + unref'd, so the browser is the only way to reach it; this is the
+# kill switch. Respond first, then exit so the port is freed.
+handleShutdownUi = (req, res) ->
+  stopRepeatLoop()
+  sendJson res, 200,
+    ok: true
+    pid: process.pid
+    shutting_down: true
+  setTimeout((-> process.exit(0)), 150)
+
 handleControl = (req, res) ->
   bodyText = await readRequestBody req
   payload = {}
@@ -1259,12 +1270,12 @@ handleSwitchPipe = (req, res) ->
     return sendJson res, 400, { ok: false, error: 'invalid json body' }
 
   pipeName = String(payload.pipe ? '').trim()
-  return sendJson(res, 400, { ok: false, error: 'pipe is required' }) unless pipeName.length
-  return sendJson(res, 400, { ok: false, error: 'invalid pipe name' }) if pipeName.includes('/') or pipeName.includes(path.sep) or pipeName is '.' or pipeName is '..'
-
-  targetCwd = path.join(PIPES_ROOT, pipeName)
-  return sendJson(res, 404, { ok: false, error: 'pipe directory not found' }) unless fs.existsSync(targetCwd) and fs.statSync(targetCwd).isDirectory()
-  return sendJson(res, 200, { ok: true, pipe: pipeName, cwd: targetCwd, unchanged: true }) if path.resolve(targetCwd) is path.resolve(CWD)
+  if pipeName.length
+    return sendJson(res, 400, { ok: false, error: 'invalid pipe name' }) if pipeName.includes('/') or pipeName.includes(path.sep) or pipeName is '.' or pipeName is '..'
+    targetCwd = path.join(PIPES_ROOT, pipeName)
+    return sendJson(res, 404, { ok: false, error: 'pipe directory not found' }) unless fs.existsSync(targetCwd) and fs.statSync(targetCwd).isDirectory()
+  else
+    targetCwd = CWD          # empty pipe => restart current workspace in place
 
   fs.mkdirSync path.join(targetCwd, 'state'), { recursive: true }
   fs.mkdirSync path.join(targetCwd, 'logs'), { recursive: true }
@@ -1275,7 +1286,12 @@ handleSwitchPipe = (req, res) ->
     cwd: targetCwd
     restarting: true
 
-  launchArgs = ['-lc', "sleep 1; exec coffee #{JSON.stringify(path.join(EXEC_ROOT, 'ui_server.coffee'))}"]
+  # Relaunch the target workspace's OWN ui_server.coffee (so a project's edited
+  # UI + its runtime.sqlite are preserved); fall back to the shipped one.
+  uiServerPath = path.join(targetCwd, 'ui_server.coffee')
+  uiServerPath = path.join(EXEC_ROOT, 'ui_server.coffee') unless fs.existsSync(uiServerPath)
+
+  launchArgs = ['-lc', "sleep 1; exec coffee #{JSON.stringify(uiServerPath)}"]
   child = spawn 'bash', launchArgs,
     cwd: targetCwd
     detached: true
@@ -1373,6 +1389,11 @@ server = http.createServer (req, res) ->
         error: String(err?.message ? err)
   if url is '/api/kill' and req.method is 'POST'
     return Promise.resolve(handleKill(req, res)).catch (err) ->
+      sendJson res, 500,
+        ok: false
+        error: String(err?.message ? err)
+  if url is '/api/shutdown_ui' and req.method is 'POST'
+    return Promise.resolve(handleShutdownUi(req, res)).catch (err) ->
       sendJson res, 500,
         ok: false
         error: String(err?.message ? err)
